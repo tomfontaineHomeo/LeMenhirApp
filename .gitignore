@@ -47,7 +47,3 @@ next-env.d.ts
 /dev.db-journal
 /prisma/*.db
 /prisma/*.db-journal
-
-# uploaded student photos (local dev storage)
-/public/uploads/*
-!/public/uploads/.gitkeep

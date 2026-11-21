@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { uploadStudentPhoto } from "@/lib/supabase";
 
 async function requireStaff() {
   const session = await auth();
@@ -111,12 +110,10 @@ export async function uploadPhotoAction(formData: FormData) {
   if (!allowedTypes.includes(file.type)) return;
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const fileName = `${crypto.randomUUID()}.${ext}`;
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
+  const fileName = `${studentProfileId}/${crypto.randomUUID()}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, fileName), buffer);
+  const publicUrl = await uploadStudentPhoto(fileName, buffer, file.type);
 
   if (isProfilePhoto) {
     await prisma.photo.updateMany({
@@ -129,7 +126,7 @@ export async function uploadPhotoAction(formData: FormData) {
     data: {
       studentProfileId,
       uploadedById: staff.id,
-      url: `/uploads/${fileName}`,
+      url: publicUrl,
       caption,
       isProfilePhoto,
     },
