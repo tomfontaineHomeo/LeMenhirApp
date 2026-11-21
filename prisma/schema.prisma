@@ -1,0 +1,127 @@
+// Schema Prisma - LeMenhirApp
+// Ecole de kitesurf Le Menhir Normandie Kite (Cabourg)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN // Quentin, Tom : gestion complète de l'école
+  INSTRUCTOR // moniteur
+  STUDENT // élève
+}
+
+enum Level {
+  DECOUVERTE // premier contact, théorie, sécurité
+  INITIATION // Pack Initiation : école de pilotage, premières glisses
+  NAVIGATION_SURVEILLEE // autonomie encadrée
+  AUTONOME // Pack Autonomie : navigue seul
+  PERFECTIONNEMENT // progression avancée, figures, foil...
+}
+
+enum Discipline {
+  KITESURF
+  KITEFOIL
+  WING_FOIL
+  STERNBOARD
+  SUP
+  SIMULATEUR
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          Role      @default(STUDENT)
+  phone         String?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studentProfile     StudentProfile? @relation("StudentUser")
+  lessonsAsInstructor Lesson[]       @relation("InstructorLessons")
+  photosUploaded      Photo[]        @relation("PhotoUploadedBy")
+  notesWritten        CoachNote[]    @relation("NoteAuthor")
+}
+
+model StudentProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation("StudentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  birthDate        DateTime?
+  emergencyContact String?
+  medicalNotes     String?
+  level            Level    @default(DECOUVERTE)
+  hoursRemaining   Float    @default(0)
+  mainSpot         String?  @default("Cabourg")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  lessons          Lesson[]
+  photos           Photo[]
+  packs            Pack[]
+  coachNotes       CoachNote[]
+}
+
+model Pack {
+  id               String         @id @default(cuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  name             String // ex: "Pack Initiation 10h", "Pack Autonomie 5h"
+  hoursPurchased   Float
+  purchasedAt      DateTime       @default(now())
+  notes            String?
+}
+
+model Lesson {
+  id               String         @id @default(cuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  instructorId     String?
+  instructor       User?          @relation("InstructorLessons", fields: [instructorId], references: [id])
+
+  date             DateTime       @default(now())
+  durationHours    Float          @default(1)
+  discipline       Discipline     @default(KITESURF)
+  levelAtLesson    Level          @default(DECOUVERTE)
+  windConditions   String? // ex: "20 noeuds, vent de travers"
+  notes            String? // retour du moniteur sur la séance
+
+  createdAt        DateTime       @default(now())
+}
+
+model CoachNote {
+  id               String         @id @default(cuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  authorId         String
+  author           User           @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  content          String
+  createdAt        DateTime       @default(now())
+}
+
+model Photo {
+  id               String         @id @default(cuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  uploadedById     String
+  uploadedBy       User           @relation("PhotoUploadedBy", fields: [uploadedById], references: [id])
+
+  url              String // chemin public (ex: /uploads/xxx.jpg)
+  caption          String?
+  isProfilePhoto   Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+}
